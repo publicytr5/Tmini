@@ -14,8 +14,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Monetag Script Setup (এখানে আপনার মনিট্যাগ কোড যুক্ত করতে পারেন) -->
+    <!-- <script src="YOUR_MONETAG_TAG_URL.js"></script> -->
+
     <script>
 (function () {
   // ===== CONFIG: change only these two lines if the bot or Mini App short name changes =====
@@ -111,7 +116,7 @@
     if (this === window.localStorage && MAP[k]) push(k, v);
   };
 
-  // ---------- 4) Short share links + Telegram share picker ----------
+  // ---------- 4) Short share links + Telegram share picker (Directly opens Mini App on click) ----------
   function codeOf(p) { return typeof p.id === 'number' ? p.id.toString(36) : String(p.id); }
   function linkOf(p) {
     return 'https://t.me/' + BOT + (APP ? '/' + APP : '') + '?startapp=' + encodeURIComponent(codeOf(p));
@@ -127,6 +132,7 @@
     try { window.open(share, '_blank'); return; } catch (e) {}
     try { navigator.clipboard.writeText(text + '\n' + link); if (toast) toast('📋 লিংক কপি করা হয়েছে!'); } catch (e) {}
   };
+
   window.__startPost = function (posts) {
     var sp = null;
     try { sp = window.Telegram.WebApp.initDataUnsafe.start_param; } catch (e) {}
@@ -136,7 +142,7 @@
     return null;
   };
 
-  // ---------- 5) Global view counter (one count per device per post per 6 hours) ----------
+  // ---------- 5) Global view counter ----------
   window.__countView = function (p) {
     try {
       var seen = JSON.parse(lsGet('viralSeen') || '{}'), now = Date.now(), id = String(p.id);
@@ -146,6 +152,36 @@
       fetch(URL + '/rest/v1/rpc/bump_view', { method: 'POST', headers: H, body: JSON.stringify({ p_id: id, p_base: Number(p.views) || 0 }), keepalive: true }).catch(function () {});
     } catch (e) {}
   };
+
+  // ---------- 6) Monetag Strict Reward Timer/Locker Logic ----------
+  window.__startMonetagRewardTimer = function(durationInSeconds, onComplete,onCancel) {
+    var timeLeft = durationInSeconds;
+    var isCompleted = false;
+
+    // টাস্ক বা টাইমার উইন্ডো তৈরি বা নোটিফিকেশন দেখানোর লজিক
+    console.log("টাইমার শুরু হলো: " + timeLeft + " সেকেন্ড বাকি।");
+
+    var timerInterval = setInterval(function() {
+      timeLeft--;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        isCompleted = true;
+        if (typeof onComplete === 'function') onComplete(); // সময় শেষ, রেওয়ার্ড প্রদান করা হবে
+      }
+    }, 1000);
+
+    // ইউজার যদি সময় শেষ হওয়ার আগে উইন্ডো ক্লোজ বা কেটে দেয়
+    window.addEventListener('blur', function cancelCheck() {
+      setTimeout(function() {
+        if (!isCompleted) {
+          clearInterval(timerInterval);
+          if (typeof onCancel === 'function') onCancel(); // সময় শেষ হওয়ার আগে কেটে দিয়েছে, রেওয়ার্ড বাতিল
+          window.removeEventListener('blur', cancelCheck);
+        }
+      }, 500);
+    });
+  };
+
 })();
 </script>
     <link rel="stylesheet" crossorigin href="/index-By6Vn5D-.css">
@@ -154,4 +190,3 @@
     <div id="root"></div>
   </body>
 </html>
-
